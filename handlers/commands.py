@@ -2,22 +2,30 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from keyboards.inline_keyboards import main_menu_keyboard
 from keyboards.reply_keyboards import main_reply_keyboard, remove_keyboard
+from services.user_service import get_user_by_telegram_id, register_user
+from utils.logger import logger
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Send a welcome message and display main menu and quick access keyboard."""
     user = update.effective_user
 
-    await update.message.reply_text(
-        f"Hello {user.first_name}! I'm your interactive Telegram bot.\n"
-        "Please select an option from the menu below or use the quick access buttons at the bottom of your chat!",
-        reply_markup=main_menu_keyboard()
-    )
-    await update.message.reply_text(
-        "Quick access buttons are now available at the bottom of your chat!",
-        reply_markup=main_reply_keyboard()
-    )
+    # Check if user exists
+    existing_user = await get_user_by_telegram_id(user.id)
 
+    if not existing_user:
+        await register_user(
+            telegram_id=user.id,
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name
+        )
+        logger.info(f"Registered new user: {user.id} - {user.username}")
+        welcome_message = f"👋 Welcome, {user.first_name}! You have been registered successfully."
+    else:
+        welcome_message = f"👋 Welcome back, {user.first_name}!"
+
+
+    await update.message.reply_text(welcome_message, reply_markup=main_menu_keyboard())
 
 # /help command
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
